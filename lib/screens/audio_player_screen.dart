@@ -23,7 +23,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   final TtsService _ttsService = TtsService();
   final TrackRepository _trackRepo = TrackRepository();
   int ttsLastPlayedIndex = -1;
-  List<String> users = [""];
+  late List<String> users = [""];
 
   Stream<PositionData> get _positionDataStream =>
       Rx.combineLatest3<Duration, Duration, Duration?, PositionData>(
@@ -34,29 +34,33 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
             PositionData(position, bufferedPosition, duration ?? Duration.zero),
       );
 
+Future<void> _updatePlaylistForAuthor(String author) async {
+  final tracks = await _trackRepo.getTracksByAuthor(author);
+  final audioSources = await _audioService.buildPlaylist(tracks);
+
+  _ttsService.tts.stop();
+  await _audioService.player.stop();
+
+  await _audioService.player.setAudioSources(audioSources);
+
+  await _audioService.player.seek(Duration.zero, index: 0);
+}
+
+
   @override
   void initState() {
     super.initState();
     _init();
   }
 
+  @override
   Future<void> _init() async {
-    users = await _trackRepo.getAllAuthors();
-    final tracks = await _trackRepo.getTracksByAuthor('Judgement Act');
-    await _audioService.player.setLoopMode(LoopMode.all);
-    await _audioService.player.setAudioSources(
-      await _audioService.buildPlaylist(tracks),
-    );
-
-    _audioService.player.playbackEventStream.listen((state) {
-      if (_audioService.player.playing &&
-          state.updatePosition.inSeconds == 0 &&
-          state.currentIndex != ttsLastPlayedIndex) {
-        print('Speaking new line for: ${state.currentIndex}');
-        // _ttsService.speak('${_audioService.player.sequence[state.currentIndex!].tag.title} by ${_audioService.player.sequence[state.currentIndex!].tag.artist}');
-        ttsLastPlayedIndex = state.currentIndex!;
-      }
+    final authors = await _trackRepo.getAllAuthors();
+    setState(() {
+      users = authors; // populate autocomplete
     });
+
+    await _audioService.player.setLoopMode(LoopMode.all);
   }
 
   @override
@@ -106,12 +110,20 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
               stream: _audioService.player.sequenceStateStream,
               builder: (context, snapshot) {
                 final state = snapshot.data;
-                if (state?.sequence.isEmpty ?? true) return const SizedBox();
-                final metaData = state!.currentSource!.tag as MediaItem;
+                if (state?.sequence.isEmpty ?? true) {
+                  return const Center(
+                    child: Text(
+                      'Select an author to load tracks',
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  );
+                }
+                final tag = state!.currentSource!.tag;
+                if (tag is! MediaItem) return const SizedBox();
                 return MediaMetadata(
-                  imageUrl: metaData.artUri.toString(),
-                  title: metaData.title,
-                  artist: metaData.artist ?? '',
+                  imageUrl: tag.artUri.toString(),
+                  title: tag.title,
+                  artist: tag.artist ?? '',
                 );
               },
             ),
@@ -119,6 +131,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
               stream: _positionDataStream,
               builder: (context, snapshot) {
                 final positionData = snapshot.data;
+                if (_audioService.player.sequence.isEmpty) {
+                }
                 return CustomProgressBar(
                   progress: positionData?.position ?? Duration.zero,
                   buffered: positionData?.bufferedPosition ?? Duration.zero,
@@ -127,10 +141,27 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
                 );
               },
             ),
-
             const SizedBox(height: 20),
             Controls(audioPlayer: _audioService.player, tts: _ttsService.tts),
-            AutocompleteBasic(options: users),
+            FutureBuilder<List<String>>(
+              future: _trackRepo.getAllAuthors(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox(
+                    height: 50,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                final authors = snapshot.data!;
+                return AutocompleteBasic(
+                  options: authors,
+                  onSelected: (String selection) {
+                    debugPrint('Selected author: $selection');
+                    _updatePlaylistForAuthor(selection);
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),

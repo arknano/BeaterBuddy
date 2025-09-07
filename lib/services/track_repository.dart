@@ -18,7 +18,7 @@ class TrackRepository {
     return trackMaps.map((track) {
       return WBTrack(
         id: track['id'] as int,
-        title: track['title'] as String,
+        title: '(Week ${track['week']}) ${track['title']}',
         pageURL: track['link'] as String,
         author: track['author'] as String,
         week: track['week'] as int,

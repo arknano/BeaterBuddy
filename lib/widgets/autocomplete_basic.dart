@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AutocompleteBasic extends StatelessWidget {
-  const AutocompleteBasic({super.key, required this.options});
+  const AutocompleteBasic({
+    super.key,
+    required this.options,
+    required this.onSelected,
+  });
 
   final List<String> options;
+  final void Function(String) onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -12,13 +17,13 @@ class AutocompleteBasic extends StatelessWidget {
         if (textEditingValue.text.isEmpty) {
           return const Iterable<String>.empty();
         }
-        return options.where((String option) {
-          return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
-        });
+        return options.where(
+          (String option) => option.toLowerCase().contains(
+            textEditingValue.text.toLowerCase(),
+          ),
+        );
       },
-      onSelected: (String selection) {
-        debugPrint('You just selected $selection');
-      },
+      onSelected: onSelected,
     );
   }
 }
