@@ -1,4 +1,4 @@
-#BeaterBuddy
+# BeaterBuddy
 
 A third-party app for listening to tracks on [WeeklyBeats](https://weeklybeats.com/).
 BeaterBuddy's goal is to provide new ways to listen to music created by the WeeklyBeats community that aren't supported by the website.
