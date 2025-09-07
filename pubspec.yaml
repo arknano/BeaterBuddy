@@ -25,5 +25,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/audio/
+    - assets/tracks.json
     - assets/images/

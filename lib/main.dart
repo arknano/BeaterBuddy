@@ -5,6 +5,8 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 
 Future<void> main() async {
   await JustAudioBackground.init(
@@ -23,6 +25,26 @@ class PositionData {
   final Duration duration;
 }
 
+class WBTrack {
+  final int id;
+  final String title;
+  final String pageURL;
+  final String author;
+  final int week;
+  final int year;
+  final String audioURL;
+
+  WBTrack({
+    required this.id,
+    required this.title,
+    required this.pageURL,
+    required this.author,
+    required this.week,
+    required this.year,
+    required this.audioURL,
+  });
+}
+
 class AudioPlayerScreen extends StatefulWidget {
   const AudioPlayerScreen({super.key});
 
@@ -34,6 +56,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   late AudioPlayer _audioPlayer;
   final FlutterTts tts = FlutterTts();
   int ttsLastPlayedIndex = -1;
+  List<String> users = [""];
 
   Future<void> _speak(String text) async {
     await tts.setVolume(1);
@@ -46,42 +69,59 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
     }
   }
 
-  final _playlist = <AudioSource>[
-    AudioSource.uri(
-      Uri.parse(
-        'https://weeklybeats.s3.amazonaws.com/music/2024/mwmwmw_weeklybeats-2024_52_the-filament.mp3',
-      ),
-      tag: MediaItem(
-        id: '0',
-        title: 'the filament',
-        artist: 'mwmwmw',
-        artUri: Uri.parse('assets/images/wb2024.png'),
-      ),
-    ),
-    AudioSource.uri(
-      Uri.parse(
-        'https://weeklybeats.s3.amazonaws.com/music/2024/nedsferatu_weeklybeats-2024_52_exw_wb_y24w52wav.mp3',
-      ),
-      tag: MediaItem(
-        id: '0',
-        title: 'EXW_WB_Y24W52.WAV',
-        artist: 'nedsferatu',
-        artUri: Uri.parse('assets/images/wb2024.png'),
-      ),
-    ),
-    AudioSource.uri(
-      Uri.parse(
-        'https://weeklybeats.s3.amazonaws.com/music/2024/hhuwoa_weeklybeats-2024_52_52-flatter--colder---edge-of-the-world-[--kiss-you---the-end-always].mp3',
-      ),
-      tag: MediaItem(
-        id: '0',
-        title:
-            '52. flatter & colder / edge of the world [/ kiss you / the end always]',
-        artist: 'hhuwoa',
-        artUri: Uri.parse('assets/images/wb2024.png'),
-      ),
-    ),
-  ];
+  Future<List<AudioSource>> _getPlaylist() async {
+    final tracks = await _getAllUserTracks('Judgement Act');
+    return [
+      for (WBTrack track in tracks)
+        AudioSource.uri(
+          Uri.parse(track.audioURL),
+          tag: MediaItem(
+            id: track.id.toString(),
+            title: track.title,
+            artist: track.author,
+            artUri: Uri.parse('assets/images/wb2024.png'),
+          ),
+        ),
+    ];
+  }
+
+  Future<List<WBTrack>> _getAllUserTracks(String user) async {
+    final jsonData = await getTrackData();
+    final trackMaps =
+        jsonData
+            .whereType<Map<String, dynamic>>()
+            .where((track) => track['author'] == user)
+            .map((track) => Map<String, Object?>.from(track))
+            .toList();
+
+    trackMaps.sort((a, b) {
+      final weekA = a['week'] as int? ?? 0;
+      final weekB = b['week'] as int? ?? 0;
+      return weekA.compareTo(weekB);
+    });
+
+    return [
+      for (final {
+            'id': id as int,
+            'title': title as String,
+            'link': link as String,
+            'author': author as String,
+            'week': week as int,
+            'year': year as int,
+            'url': url as String,
+          }
+          in trackMaps)
+        WBTrack(
+          id: id,
+          title: title,
+          pageURL: link,
+          author: author,
+          week: week,
+          year: year,
+          audioURL: url,
+        ),
+    ];
+  }
 
   Stream<PositionData> get _positionDataStream =>
       Rx.combineLatest3<Duration, Duration, Duration?, PositionData>(
@@ -100,16 +140,17 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   }
 
   Future<void> _init() async {
+    users = await getAllAuthors();
     await _audioPlayer.setLoopMode(LoopMode.all);
-    await _audioPlayer.setAudioSources(_playlist);
+    await _audioPlayer.setAudioSources(await _getPlaylist());
     _audioPlayer.playbackEventStream.listen((state) {
       if (_audioPlayer.playing &&
           state.updatePosition.inSeconds == 0 &&
           state.currentIndex != ttsLastPlayedIndex) {
         print('Speaking new line for: ${state.currentIndex}');
-        _speak(
-          '${_audioPlayer.sequence![state.currentIndex!].tag.title!} by ${_audioPlayer.sequence![state.currentIndex!].tag.artist!}',
-        );
+        // _speak(
+        //   '${_audioPlayer.sequence[state.currentIndex!].tag.title!} by ${_audioPlayer.sequence[state.currentIndex!].tag.artist!}',
+        // );
         ttsLastPlayedIndex = state.currentIndex!;
       }
     });
@@ -119,6 +160,30 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   void dispose() {
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  Future<List<dynamic>> getTrackData() async {
+    final String jsonString = await rootBundle.loadString('assets/tracks.json');
+    return json.decode(jsonString);
+  }
+
+  //AUTOCOMPLETE SEARCH BAR
+
+  
+
+  Future<List<String>> getAllAuthors() async {
+    final jsonData = await getTrackData();
+
+    final authors =
+        jsonData
+            .whereType<Map<String, dynamic>>()
+            .map((track) => track['author']?.toString().trim() ?? '')
+            .where((author) => author.isNotEmpty)
+            .toSet()
+            .toList();
+    authors.sort();
+
+    return authors;
   }
 
   @override
@@ -207,6 +272,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
               ),
               const SizedBox(height: 20),
               Controls(audioPlayer: _audioPlayer, tts: tts),
+              AutocompleteBasicExample(options: users),
             ],
           ),
         ),
@@ -380,6 +446,7 @@ class Controls extends StatelessWidget {
               ),
             );
           },
+
         ),
         IconButton(
           onPressed: () {
@@ -400,6 +467,29 @@ class Controls extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class AutocompleteBasicExample extends StatelessWidget {
+  const AutocompleteBasicExample({super.key, required this.options});
+
+  final List<String> options;
+
+  @override
+  Widget build(BuildContext context) {
+    return Autocomplete<String>(
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text == '') {
+          return const Iterable<String>.empty();
+        }
+        return options.where((String option) {
+          return option.contains(textEditingValue.text.toLowerCase());
+        });
+      },
+      onSelected: (String selection) {
+        debugPrint('You just selected $selection');
+      },
     );
   }
 }
