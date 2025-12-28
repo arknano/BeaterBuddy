@@ -9,6 +9,8 @@ class MediaMetadata extends StatelessWidget {
     required this.artist,
     this.titleUrl,
     this.artistUrl,
+    this.year,
+    this.week,
   });
 
   final String imageUrl;
@@ -16,6 +18,8 @@ class MediaMetadata extends StatelessWidget {
   final String artist;
   final String? titleUrl;
   final String? artistUrl;
+  final int? year;
+  final int? week;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +96,18 @@ class MediaMetadata extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ),
+        if (year != null || week != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            '${year ?? ''} • Week ${week ?? ''}',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ],
     );
   }

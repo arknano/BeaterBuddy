@@ -31,7 +31,7 @@ class TrackRepository {
 
       return WBTrack(
         id: track['id'] as int,
-        title: '(${track['year']} - Week ${track['week']}) ${track['title']}',
+        title: track['title'] as String,
         pageURL: pageUrl,
         author: track['author'] as String,
         authorURL: authorUrl,
