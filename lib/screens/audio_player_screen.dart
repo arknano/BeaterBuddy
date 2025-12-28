@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../models/position_data.dart';
 import '../models/wb_track.dart';
 import '../services/audio_service.dart';
@@ -12,6 +13,7 @@ import '../services/track_repository.dart';
 import '../widgets/media_metadata.dart';
 import '../widgets/controls.dart';
 // inline author selector dialog is used instead of AutocompleteBasic
+import '../widgets/credits_dialog.dart';
 import '../widgets/custom_progress_bar.dart';
 
 class AudioPlayerScreen extends StatefulWidget {
@@ -108,6 +110,19 @@ Future<void> _updatePlaylistForAuthor(String author) async {
           height: 40,
           width: 40,
         ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              showDialog<void>(
+                context: context,
+                builder: (dialogContext) {
+                  return const CreditsDialog();
+                },
+              );
+            },
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+          ),
+        ],
       ),
       body: Container(
         padding: const EdgeInsets.all(20),
