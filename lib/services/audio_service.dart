@@ -14,7 +14,11 @@ class AudioService {
             id: track.id.toString(),
             title: track.title,
             artist: track.author,
-            artUri: Uri.parse('assets/images/wb2024.png'),
+            artUri: Uri.parse(track.imageURL),
+            extras: <String, dynamic>{
+              'pageURL': track.pageURL,
+              'authorURL': track.authorURL,
+            },
           ),
         ),
     ];

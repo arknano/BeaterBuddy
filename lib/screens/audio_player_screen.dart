@@ -53,7 +53,6 @@ Future<void> _updatePlaylistForAuthor(String author) async {
     _init();
   }
 
-  @override
   Future<void> _init() async {
     final authors = await _trackRepo.getAllAuthors();
     setState(() {
@@ -72,6 +71,8 @@ Future<void> _updatePlaylistForAuthor(String author) async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      
+      //HEADER
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -103,6 +104,8 @@ Future<void> _updatePlaylistForAuthor(String author) async {
             end: Alignment.bottomCenter,
           ),
         ),
+
+        //MEDIA METADATA
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -124,9 +127,13 @@ Future<void> _updatePlaylistForAuthor(String author) async {
                   imageUrl: tag.artUri.toString(),
                   title: tag.title,
                   artist: tag.artist ?? '',
+                    titleUrl: tag.extras?['pageURL'] as String?,
+                    artistUrl: (tag.extras?['authorURL'] as String?) ?? (tag.extras?['pageURL'] as String?),
                 );
               },
             ),
+
+            //TRACK PROGRESS BAR
             StreamBuilder<PositionData>(
               stream: _positionDataStream,
               builder: (context, snapshot) {
@@ -141,8 +148,12 @@ Future<void> _updatePlaylistForAuthor(String author) async {
                 );
               },
             ),
+
+            //CONTROLS
             const SizedBox(height: 20),
             Controls(audioPlayer: _audioService.player, tts: _ttsService.tts),
+
+            //AUTHOR SELECTION
             FutureBuilder<List<String>>(
               future: _trackRepo.getAllAuthors(),
               builder: (context, snapshot) {
