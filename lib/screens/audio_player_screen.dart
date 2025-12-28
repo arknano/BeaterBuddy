@@ -49,6 +49,7 @@ Future<void> _updatePlaylistForAuthor(String author) async {
   await _audioService.player.stop();
 
   await _audioService.player.setAudioSources(audioSources);
+  _audioService.enablePreloading();
 
   setState(() {
     _currentTracks = tracks;
@@ -81,7 +82,7 @@ Future<void> _updatePlaylistForAuthor(String author) async {
   @override
   void dispose() {
     _indexSub.cancel();
-    _audioService.player.dispose();
+    _audioService.dispose();
     super.dispose();
   }
 
